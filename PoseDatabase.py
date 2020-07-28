@@ -24,10 +24,7 @@ class PoseDatabase:
                 normalized vector of the pose
         """
         # assuming the pose is not in db
-        if self.key_vectors[pose] is None:
-            self.key_vectors[pose] = vector
-        else:
-            return "pose is already in database"
+        self.key_vectors[pose] = vector
         
     def replace_pose_vector(self, pose, vector):
         """ updates a pose (because we only want one)
@@ -59,7 +56,8 @@ class PoseDatabase:
             pose: String
                 name of the pose
         """
-        distances = Counter({pose: min(np.linalg.norm(vec, vector), np.linalg.norm(np.fliplr(vec), vector)) for pose, vec in self.key_vectors})
+
+        distances = Counter({pose: min(np.linalg.norm(vec - vector), np.linalg.norm(np.fliplr(vec) - vector)) for pose, vec in self.key_vectors.items()})
         (pose2, d2), (pose1, d1) = distances.most_common()[-2:]
         if d2 >= threshold*d1:
             return pose1
