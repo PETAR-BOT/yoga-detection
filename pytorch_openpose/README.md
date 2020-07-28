@@ -1,0 +1,1 @@
+Everything in this folder is copied from https://github.com/Hzzone/pytorch-openpose 
