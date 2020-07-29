@@ -109,7 +109,19 @@ def show_vectors(path):
     plt.show()
 
 def get_candidate_subset(path):
-    """ helper method
+    """ helper method that returns the original image, 
+        candidate, and subset for key vectors
+
+    Parameters
+    ----------
+        path: String
+            path to image
+
+    Returns
+    -------
+        tuple - (candidate, subset, oriImg)
+            candidate and subset are used to creat key vectors
+            oriImg is the loaded image
     """
     body_estimation = Body('model/body_pose_model.pth')
     oriImg = cv2.imread(path)
@@ -119,6 +131,21 @@ def get_candidate_subset(path):
 def get_similarity(path, pose, db_path='vectorDB.pkl'):
     """ gets the similarity between DB's pose and 
         your image's pose
+    
+    Parameters
+    ----------
+        path: string
+            path to image
+        pose: string
+            predicted pose from resnet
+        db_path: string 
+            path to vector database
+
+    Returns
+    -------
+        similarity: float
+            cosine similarity between angle vectors of the key vector
+            from DB and the key vector from img
     """
     candidate, subset, oriImg = get_candidate_subset(path)
     vector = compute_angles_vector(get_keypoints(subset, candidate))
@@ -133,19 +160,60 @@ def get_similarity(path, pose, db_path='vectorDB.pkl'):
     return similarity
 
 def compute_angles_vector(key_vec):
+    """ helper method that computes the angle
+        vector for a key vector, it uses the first and
+        second key points as the fixed side and calculates
+        the angle to all other 16 key points
+    
+    Parameters
+    ----------
+        key_vec: np.ndarray, shape-(18,2)
+            key vector that stores all the key points
+    
+    Returns
+    -------
+        angles: np.ndarray, shape-(16,)
+            angles between fixed side and other key points
+    """
     fixed_side = key_vec[0,:] - key_vec[1,:]
 
     angles = np.array([angle(fixed_side, key_vec[0, :] - key_vec[i, :]) if key_vec[i, 0] != -1 else -1 for i in range(2, 18)])
     return angles
 
 def angle(a, b):
+    """ helper method that finds angle between two vectors
+
+    Parameters
+    ----------
+        a: np.ndarray, shape-(1,2)
+        b: np.ndarray, shape-(1,2)
+    
+    Return
+    ------
+        angle: float
+    """
     cosine_angle = np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
     return np.arccos(cosine_angle)
 
 def cosine_sim(d1, d2):
+    """ calculates the cosine similarity
+
+    Parameters
+    ----------
+        d1: np.ndarray, shape-(16,)
+        d2: np.ndarray, shape-(16,)
+            two vectors containing the angles between key points
+
+    Returns
+    -------
+        cosine_sim: float
+    """
     return (np.dot(d1, d2)) / (np.linalg.norm(d1)* np.linalg.norm(d2))
 
 def create_img_from_cam():
+    """ opens web cam to capture picture + adds a 10 second timer + saves img
+        for classification + determining similarity
+    """
     cap = cv2.VideoCapture(0)
  
     while True:
