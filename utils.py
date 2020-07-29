@@ -34,11 +34,6 @@ def get_keypoints(subset, candidate):
     """
     parts = np.asarray(subset[0][:-2], dtype=np.int)
     keypoints = candidate[:, :2][parts]
-    #print(keypoints)
-    keypoints = keypoints - np.amin(keypoints, axis=0)
-    #print(keypoints)
-    keypoints = keypoints / np.amax(keypoints, axis=0)
-    #print(keypoints)
     keypoints[parts == -1] = -1 * np.ones(2)
 
     return keypoints
