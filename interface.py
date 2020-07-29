@@ -17,5 +17,5 @@ else:
 
 pose = utils.classify_pose(path)
 print("Yoga pose: ", pose)
-print("Similarity: ", utils.get_similarity(path, pose))
+print("Cosine similarity: ", "{:.2f}".format(utils.get_similarity(path, pose)))
 utils.show_vectors(path)

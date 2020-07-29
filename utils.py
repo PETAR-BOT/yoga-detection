@@ -35,6 +35,11 @@ def get_keypoints(subset, candidate):
     """
     parts = np.asarray(subset[0][:-2], dtype=np.int)
     keypoints = candidate[:, :2][parts]
+    #print(keypoints)
+    keypoints = keypoints - np.amin(keypoints, axis=0)
+    #print(keypoints)
+    keypoints = keypoints / np.amax(keypoints, axis=0)
+    #print(keypoints)
     keypoints[parts == -1] = -1 * np.ones(2)
 
     return keypoints
@@ -116,14 +121,29 @@ def get_similarity(path, pose, db_path='vectorDB.pkl'):
         your image's pose
     """
     candidate, subset, oriImg = get_candidate_subset(path)
-    vector = get_keypoints(subset, candidate)
+    vector = compute_angles_vector(get_keypoints(subset, candidate))
 
     database = PoseDatabase.PoseDatabase()
     database.load_database(db_path)
     pose_vec = database.key_vectors[pose]
+    lrf_pose_vec = np.hstack((pose_vec[:, 0].reshape(18,1), 1 - pose_vec[:, 1].reshape(18,1)))
 
-    similarity = min(np.linalg.norm(pose_vec - vector), np.linalg.norm(np.hstack((pose_vec[:, 0].reshape(18,1), 1 - pose_vec[:, 1].reshape(18,1))) - vector))
+    similarity = min(cosine_sim(vector, compute_angles_vector(pose_vec)), cosine_sim(vector, compute_angles_vector(lrf_pose_vec)))
+    #similarity = min(np.linalg.norm(pose_vec - vector), np.linalg.norm(np.hstack((pose_vec[:, 0].reshape(18,1), 1 - pose_vec[:, 1].reshape(18,1))) - vector))
     return similarity
+
+def compute_angles_vector(key_vec):
+    fixed_side = key_vec[0,:] - key_vec[1,:]
+
+    angles = np.array([angle(fixed_side, key_vec[0, :] - key_vec[i, :]) if key_vec[i, 0] != -1 else -1 for i in range(2, 18)])
+    return angles
+
+def angle(a, b):
+    cosine_angle = np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+    return np.arccos(cosine_angle)
+
+def cosine_sim(d1, d2):
+    return (np.dot(d1, d2)) / (np.linalg.norm(d1)* np.linalg.norm(d2))
 
 def create_img_from_cam():
     cap = cv2.VideoCapture(0)
@@ -151,3 +171,4 @@ def create_img_from_cam():
             break
     cap.release()
     cv2.destroyAllWindows()
+
