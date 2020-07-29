@@ -14,6 +14,7 @@ from torch.optim import lr_scheduler
 import torchvision
 from torchvision import datasets, models, transforms
 from PIL import Image
+import PoseDatabase
 
 def get_keypoints(subset, candidate):
     """
@@ -64,10 +65,6 @@ def classify_pose(path):
     state_dict = torch.load('model/resnet34-pose.pth', map_location=device)
     model.load_state_dict(state_dict)
 
-    test_image = 'images/mountain.png'
-    oriImg = cv2.imread(test_image)
-    oriImg = oriImg[:,:, ::-1] # RGB 
-
     normalize = transforms.Compose([
         transforms.Resize(256),
         transforms.CenterCrop(224),
@@ -99,11 +96,58 @@ def show_vectors(path):
             img with vectors
     """
     # From demo.py file
-    body_estimation = Body('model/body_pose_model.pth')
-    oriImg = cv2.imread(path)
-    candidate, subset = body_estimation(oriImg)
+    candidate, subset, oriImg = get_candidate_subset(path)
     canvas = copy.deepcopy(oriImg)
     canvas = util.draw_bodypose(canvas, candidate, subset)
     plt.imshow(canvas[:, :, [2, 1, 0]])
     plt.axis('off')
     plt.show()
+
+def get_candidate_subset(path):
+    """ helper method
+    """
+    body_estimation = Body('model/body_pose_model.pth')
+    oriImg = cv2.imread(path)
+    candidate, subset = body_estimation(oriImg)
+    return (candidate, subset, oriImg)
+
+def get_similarity(path, pose, db_path='vectorDB.pkl'):
+    """ gets the similarity between DB's pose and 
+        your image's pose
+    """
+    candidate, subset, oriImg = get_candidate_subset(path)
+    vector = get_keypoints(subset, candidate)
+
+    database = PoseDatabase.PoseDatabase()
+    database.load_database(db_path)
+    pose_vec = database.key_vectors[pose]
+
+    similarity = min(np.linalg.norm(pose_vec - vector), np.linalg.norm(np.hstack((pose_vec[:, 0].reshape(18,1), 1 - pose_vec[:, 1].reshape(18,1))) - vector))
+    return similarity
+
+def create_img_from_cam():
+    cap = cv2.VideoCapture(0)
+ 
+    while True:
+        ret, img = cap.read()
+        cv2.imshow('Pose Detection',img)
+        k = cv2.waitKey(125)
+        j = 100
+        if k == ord('q'):
+            while j>=10:
+                ret, img = cap.read()
+                if j%10 == 0:
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    cv2.putText(img,str(j//10),(250,250), font, 7,(255,0,0),10,cv2.LINE_AA)
+                cv2.imshow('Pose Detection',img)
+                cv2.waitKey(125)
+                j = j-1
+            else:
+                ret, img = cap.read()
+                cv2.imshow('Pose Detection',img)
+                cv2.waitKey(1000)
+                cv2.imwrite('images/camera.jpg',img)
+        elif k == 27:
+            break
+    cap.release()
+    cv2.destroyAllWindows()
